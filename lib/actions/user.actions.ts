@@ -1,3 +1,5 @@
+//lib/actions/user.actions.ts
+
 "use server";
 
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
@@ -46,26 +48,34 @@ export const createAccount = async ({
   email: string;
 }) => {
   const existingUser = await getUserByEmail(email);
-  const tokenId = await sendEmailOTP({ email });
+  const { account } = await createAdminClient();
 
-  if (!tokenId) throw new Error("Failed to send OTP");
-
+  // Create account if not existing
   if (!existingUser) {
+    const newAccount = await account.create(ID.unique(), email, "password_placeholder", fullName);
+    const accountId = newAccount.$id;
+
     const { databases } = await createAdminClient();
     await databases.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       ID.unique(),
       {
+        accountId,
         fullName,
         email,
         avatar: avatarPlaceholderUrl,
-        tokenId,
       }
     );
+
+    return parseStringify({ accountId });
   }
 
-  return parseStringify({ tokenId });
+  // Send OTP for existing user
+  const tokenId = await sendEmailOTP({ email });
+  if (!tokenId) throw new Error("Failed to send OTP");
+
+  return parseStringify({ accountId: existingUser.$id });
 };
 
 // Verify OTP and create session
