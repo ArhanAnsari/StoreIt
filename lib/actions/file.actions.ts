@@ -194,7 +194,6 @@ export const deleteFile = async ({
 };
 
 // ============================== TOTAL FILE SPACE USED
-// Get Total Space Used
 export async function getTotalSpaceUsed() {
   try {
     const { databases } = await createSessionClient();
@@ -214,11 +213,11 @@ export async function getTotalSpaceUsed() {
       audio: { size: 0, latestDate: "" },
       other: { size: 0, latestDate: "" },
       used: 0,
-      all: 2 * 1024 * 1024 * 1024, // 2GB
+      all: 2 * 1024 * 1024 * 1024 /* 2GB available bucket storage */,
     };
 
     files.documents.forEach((file) => {
-      const fileType = file.type;
+      const fileType = file.type as FileType;
       totalSpace[fileType].size += file.size;
       totalSpace.used += file.size;
 
@@ -232,6 +231,6 @@ export async function getTotalSpaceUsed() {
 
     return parseStringify(totalSpace);
   } catch (error) {
-    handleError(error, "Error calculating total space used");
+    handleError(error, "Error calculating total space used:, ");
   }
 }
