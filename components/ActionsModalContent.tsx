@@ -2,7 +2,7 @@ import { Models } from "node-appwrite";
 import Thumbnail from "@/components/Thumbnail";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -45,6 +45,33 @@ interface Props {
 }
 
 export const ShareInput = ({ file, onInputChange, onRemove }: Props) => {
+  const [error, setError] = useState("");
+
+  const validateAndUpdateEmails = (value: string) => {
+    const emails = value
+      .trim()
+      .split(",")
+      .filter((email) => email.length > 0);
+
+    if (emails.length === 0) {
+      setError("please enter at least one email address");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter(
+      (email) => !emailRegex.test(email.trim())
+    );
+
+    if (invalidEmails.length > 0) {
+      setError(`Invalid email format: ${invalidEmails.join(", ")}`);
+      return;
+    }
+
+    setError("");
+    onInputChange(emails);
+  };
+
   return (
     <>
       <ImageThumbnail file={file} />
@@ -56,9 +83,10 @@ export const ShareInput = ({ file, onInputChange, onRemove }: Props) => {
         <Input
           type="email"
           placeholder="Enter email address"
-          onChange={(e) => onInputChange(e.target.value.trim().split(","))}
+          onChange={(e) => validateAndUpdateEmails(e.target.value)}
           className="share-input-field"
         />
+        {error && <p className="ml-1 mt-1 text-sm">{error}</p>}
         <div className="pt-4">
           <div className="flex justify-between">
             <p className="subtitle-2 text-light-100">Shared with</p>
