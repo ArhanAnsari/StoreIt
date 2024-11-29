@@ -18,6 +18,11 @@ interface Props {
   className?: string;
 }
 
+interface FileInfo {
+  name: string;
+  size: number;
+}
+
 const FileUploader = ({ ownerId, accountId, className }: Props) => {
   const path = usePathname();
   const { toast } = useToast();
@@ -25,12 +30,22 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
+      const fileInfo: FileInfo[] = acceptedFiles.map((f) => ({
+        name: f.name,
+        size: f.size,
+      }));
+      console.log("Files received:", fileInfo);
       setFiles(acceptedFiles);
 
       const uploadPromises = acceptedFiles.map(async (file) => {
+        console.log(`Processing file: ${file.name} (${file.size} bytes)`);
+
         if (file.size > MAX_FILE_SIZE) {
+          console.log(
+            `File ${file.name} exceeds size limit of ${MAX_FILE_SIZE} bytes`
+          );
           setFiles((prevFiles) =>
-            prevFiles.filter((f) => f.name !== file.name),
+            prevFiles.filter((f) => f.name !== file.name)
           );
 
           return toast({
@@ -44,27 +59,44 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
           });
         }
 
-        return uploadFile({ file, ownerId, accountId, path }).then(
-          (uploadedFile) => {
-            if (uploadedFile) {
-              setFiles((prevFiles) =>
-                prevFiles.filter((f) => f.name !== file.name),
-              );
-            }
-          },
-        );
+        try {
+          const result = await uploadFile({ file, ownerId, accountId, path });
+          console.log(`Upload result for ${file.name}:`, result);
+
+          if (result) {
+            setFiles((prevFiles) =>
+              prevFiles.filter((f) => f.name !== file.name)
+            );
+          }
+          return result;
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          console.error(`Upload failed for ${file.name}:`, errorMessage);
+          toast({
+            description: `Failed to upload ${file.name}: ${errorMessage}`,
+            className: "error-toast",
+          });
+        }
       });
 
-      await Promise.all(uploadPromises);
+      try {
+        await Promise.all(uploadPromises);
+        console.log("All uploads completed");
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Upload batch failed:", errorMessage);
+      }
     },
-    [ownerId, accountId, path],
+    [ownerId, accountId, path, toast]
   );
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   const handleRemoveFile = (
     e: React.MouseEvent<HTMLImageElement, MouseEvent>,
-    fileName: string,
+    fileName: string
   ) => {
     e.stopPropagation();
     setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
